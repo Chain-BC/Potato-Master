@@ -1,10 +1,8 @@
 # https://github.com/ChainBoy300/Potato-Master-Bot
 import os
-import discord
+from discord import Client
 
-# Client variable
-client = discord.Client()
-
+client = Client()
 
 # When bot is ready to go
 @client.event
