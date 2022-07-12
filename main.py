@@ -2,8 +2,16 @@
 import os
 import discord
 import requests
+import json
 
 client = discord.Client()
+
+
+def get_meme():
+    response = requests.get("https://meme-api.herokuapp.com/gimme/wholesomememes")
+    json_data = json.loads(response.text)
+    meme = json_data['url']
+    return(meme)
 
 
 # When bot is ready to go
@@ -12,7 +20,7 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(client))
 
 
-# For %help
+# For %help and %test
 @client.event
 async def on_message(message):
     if message.author == client.user:
@@ -23,6 +31,11 @@ async def on_message(message):
 
     if message.content.startswith('%test'):
         await message.channel.send('All good')
+
+# MEMESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+    if message.content.startswith('%meme'):
+        meme = get_meme()
+        await message.channel.send(meme)
 
 
 # Important bot stuff
