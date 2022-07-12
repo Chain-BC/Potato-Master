@@ -28,9 +28,8 @@ async def on_message(message):
         return
 
     if message.content.startswith('%help'):
-        await message.channel.send('No help for you sucka!')
+        await message.channel.send('No help for you sucka')
 
 
 # Important bot stuff
-
 client.run(os.environ['TOKEN'])
