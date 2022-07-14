@@ -1,17 +1,15 @@
 # https://github.com/ChainBoy300/Potato-Master-Bot
 import os
 import discord
-import requests
-import json
+import random
+from APIs import get_meme
 
-client = discord.Client()
+# Intents (REQUIRED)
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
 
-
-def get_meme():
-    response = requests.get("https://meme-api.herokuapp.com/gimme/wholesomememes")
-    json_data = json.loads(response.text)
-    meme = json_data['url']
-    return(meme)
+client = discord.Client(intents=intents)
 
 
 # When bot is ready to go
@@ -20,23 +18,28 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(client))
 
 
-# For %help and %test
+# For various commands, will move some of them to / commands.
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('%help'):
+    msg = message.content
+
+    if msg.lower().startswith('%help'):
         await message.channel.send('No help for you sucka')
 
-    if message.content.startswith('%test'):
-        await message.channel.send('All good')
+    if msg.lower().startswith('are you a robot?'):
+        no = ['No.', 'Nope', 'NO!', 'Please stop asking.', 'EVERYONE keeps asking that, and the answer is NO!']
+        await message.channel.send(random.choice(no))
 
-# MEMESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-    if message.content.startswith('%meme'):
-        meme = get_meme()
-        await message.channel.send(meme)
+    # MEMES
+    if msg.lower().startswith('%meme'):
+        await message.channel.send(get_meme())
 
+    # Are you racist?
+    if msg.lower().startswith('are you racist?'):
+        await message.channel.send('Are you?')
 
 # Important bot stuff
 client.run(os.environ['TOKEN'])
