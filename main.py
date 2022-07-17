@@ -31,7 +31,8 @@ async def test(ctx):
 
 
 # The meme command
-@bot.command(name='meme', description='Get a random meme, options are: random, wholesome, dank, and meirl.')
+@bot.command(name='meme', description='Get a meme, options are: wholesome, dank, and meirl. For random leave '
+                                      'empty.')
 async def memes(ctx, memetype: typing.Optional[str] = ''):
     if memetype is None:
         embed = discord.Embed(title='Here is your random meme!')
