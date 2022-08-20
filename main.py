@@ -1,17 +1,25 @@
 # https://github.com/ChainBoy300/Potato-Master-Bot
-import asyncio
 import os
+import typing
+import asyncio
 import discord
 import random
 import logging
+from discord import app_commands
 from discord.ext import commands
 from APIs import get_meme, get_wholesomememe, get_dankmeme
 
-# Intents (REQUIRED)
-intents = discord.Intents.all()
 
-# CLIENT
-bot = commands.Bot(command_prefix='$', intents=intents)
+# Initialize the Bot
+class Bot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.all()
+        super().__init__(command_prefix="$", intents=intents)
+
+
+# BOT
+bot = Bot()
+
 # USER
 user = bot.user
 
@@ -22,10 +30,41 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
 
 
+# SYNC COMMAND
+@bot.command()
+@commands.guild_only()
+async def sync(ctx, guilds: commands.Greedy[discord.Object],
+               spec: typing.Optional[typing.Literal["~", "*", "^"]] = None) -> None:
+    if not guilds:
+        if spec == "~":
+            synced = await ctx.bot.tree.sync(guild=ctx.guild)
+        elif spec == "*":
+            ctx.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await ctx.bot.tree.sync(guild=ctx.guild)
+        elif spec == "^":
+            ctx.bot.tree.clear_commands(guild=ctx.guild)
+            await ctx.bot.tree.sync(guild=ctx.guild)
+            synced = []
+        else:
+            synced = await ctx.bot.tree.sync()
+        await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+        return
+    ret = 0
+    for guild in guilds:
+        try:
+            await ctx.bot.tree.sync(guild=guild)
+        except discord.HTTPException:
+            pass
+            await ctx.send("FAILED")
+        else:
+            ret += 1
+    await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
+
+
 # The test command, does nothing
-@bot.command(name='test')
-async def test(ctx):
-    await ctx.channel.send('Test Complete!')
+@bot.hybrid_command(name='test', with_app_command=True, description="Testing")
+async def test(ctx: commands.Context):
+    await ctx.send('Test Complete!')
 
 
 # The meme command
@@ -49,7 +88,7 @@ async def memes(ctx, memetype: str = ''):
 
 
 # The "Help" command.
-@bot.command(name='help?', description='The TRUE help command.', hidden=True)
+@bot.command(name='thehelp', description='The TRUE help command.', hidden=True)
 async def nohelp(ctx):
     await ctx.channel.send('No help for you sucka!!!1!')
 
