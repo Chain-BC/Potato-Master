@@ -1,8 +1,8 @@
 # https://github.com/ChainBoy300/Potato-Master-Bot
 import os
-import typing
 import discord
 import random
+import typing
 import logging
 from discord.ext import commands
 
@@ -18,52 +18,37 @@ class Bot(commands.Bot):
 bot = Bot()
 user = bot.user
 
+# Modules
+modules = ['fun', 'hg', 'dev']  # These will be all ENABLED by default
+
 
 # When bot is ready to go
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
-    modules = ['fun']
-    for module in modules:
+    for module in modules:  # Loads all modules one by one until it cannot
         await bot.load_extension(module)
-        print('%s has loaded.' % module)
+        print('%s has loaded.' % module.capitalize())
 
 
-# SYNC COMMAND
-@bot.command()
+# COMMAND RELATING TO MODULES HERE
+@bot.command(name='modmod', description='Reload, unload or load modules.')
 @commands.guild_only()
-async def sync(ctx, guilds: commands.Greedy[discord.Object],
-               spec: typing.Optional[typing.Literal["~", "*", "^"]] = None) -> None:
-    if not guilds:
-        if spec == "~":
-            synced = await ctx.bot.tree.sync(guild=ctx.guild)
-        elif spec == "*":
-            ctx.bot.tree.copy_global_to(guild=ctx.guild)
-            synced = await ctx.bot.tree.sync(guild=ctx.guild)
-        elif spec == "^":
-            ctx.bot.tree.clear_commands(guild=ctx.guild)
-            await ctx.bot.tree.sync(guild=ctx.guild)
-            synced = []
+async def modify_modules(ctx, opt: typing.Literal["reload", "unload", "load"], value=None):
+    if opt == 'reload':
+        if value is None or value == '':
+            for module in modules:
+                await bot.reload_extension(module)
+                await ctx.send('%s reloaded.' % module.capitalize())
         else:
-            synced = await ctx.bot.tree.sync()
-        await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
-        return
-    ret = 0
-    for guild in guilds:
-        try:
-            await ctx.bot.tree.sync(guild=guild)
-        except discord.HTTPException:
-            pass
-            await ctx.send("FAILED")
-        else:
-            ret += 1
-    await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
-
-
-# The test command, does nothing
-@bot.hybrid_command(name='test', with_app_command=True, description="Testing")
-async def test(ctx: commands.Context):
-    await ctx.send('Test Complete!')
+            await bot.reload_extension(value)
+            await ctx.send(value.capitalize() + " reloaded.")
+    elif opt == 'load':
+        await bot.load_extension(value)
+        await ctx.send(value.capitalize() + " loaded.")
+    elif opt == 'unload':
+        await bot.unload_extension(value)
+        await ctx.send(value.capitalize() + " unloaded.")
 
 
 # For various interactions with the bot.
