@@ -18,23 +18,24 @@ class Bot(commands.Bot):
 bot = Bot()
 user = bot.user
 
-# Modules
-modules = ['fun', 'hg', 'dev']  # These will be all ENABLED by default
+# Modules: fun, hg, dev
+modules = ['fun', 'hg']  # These will be all ENABLED by default
 
 
 # When bot is ready to go
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
-    for module in modules:  # Loads all modules one by one until it cannot
+    for module in modules:  # Loads all modules one by one until it cannot (big shocker)
         await bot.load_extension(module)
         print('%s has loaded.' % module.capitalize())
 
 
 # COMMAND RELATING TO MODULES HERE
-@bot.command(name='modmod', description='Reload, unload or load modules.')
+@bot.hybrid_command(name='modmod', description='Reload, unload or load modules.')
 @commands.guild_only()
-async def modify_modules(ctx, opt: typing.Literal["reload", "unload", "load"], value=None):
+@commands.has_role('Potato Master MASTER')
+async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "unload", "load"], value: str = None):
     if opt == 'reload':
         if value is None or value == '':
             for module in modules:
@@ -49,6 +50,19 @@ async def modify_modules(ctx, opt: typing.Literal["reload", "unload", "load"], v
     elif opt == 'unload':
         await bot.unload_extension(value)
         await ctx.send(value.capitalize() + " unloaded.")
+
+
+@bot.hybrid_command(name='sync', description='Sync globally or to current server.')
+@commands.guild_only()
+@commands.has_role('Potato Master MASTER')
+async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'current']):
+    if opt == 'global':
+        synced = await bot.tree.sync()
+        await ctx.send(f"Synced {len(synced)} commands globally.")
+    elif opt == 'current':
+        guild = ctx.guild
+        synced = await bot.tree.sync(guild=guild)
+        await ctx.send(f"Synced {len(synced)} commands to the current guild.")
 
 
 # For various interactions with the bot.
