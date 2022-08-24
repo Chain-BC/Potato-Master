@@ -9,7 +9,7 @@ class Dev(commands.Cog):
         self.bot = bot
 
     # SYNC COMMAND
-    @commands.command(name='sync')
+    @commands.command(name='sync_dev')
     @commands.guild_only()
     async def sync(self, ctx: commands.Context,
                    guilds: commands.Greedy[discord.Object],
