@@ -11,7 +11,7 @@ from discord.ext import commands
 class Bot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
-        super().__init__(command_prefix="$", intents=intents)
+        super().__init__(command_prefix="$$", intents=intents)
 
 
 # BOT and USER
@@ -28,7 +28,7 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
     for module in modules:  # Loads all modules one by one until it cannot (big shocker)
         await bot.load_extension(module)
-        print('%s has loaded.' % module.capitalize())
+        print(f'{module.capitalize()} has loaded.')
 
 
 # COMMAND RELATING TO MODULES HERE
@@ -40,16 +40,16 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
         if value is None or value == '':
             for module in modules:
                 await bot.reload_extension(module)
-                await ctx.send('%s reloaded.' % module.capitalize())
+                await ctx.send(f'{module.capitalize()} reloaded.', ephemeral=True)
         else:
             await bot.reload_extension(value)
-            await ctx.send(value.capitalize() + " reloaded.")
+            await ctx.send(f"{value.capitalize()} reloaded.", ephemeral=True)
     elif opt == 'load':
         await bot.load_extension(value)
-        await ctx.send(value.capitalize() + " loaded.")
+        await ctx.send(f"{value.capitalize()} loaded.", ephemeral=True)
     elif opt == 'unload':
         await bot.unload_extension(value)
-        await ctx.send(value.capitalize() + " unloaded.")
+        await ctx.send(f"{value.capitalize()} unloaded.", ephemeral=True)
 
 
 @bot.hybrid_command(name='sync', description='Sync globally or to current server.')
