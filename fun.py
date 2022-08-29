@@ -18,7 +18,7 @@ class Fun(commands.Cog):
     @app_commands.describe(memetype='Kind of Meme')
     async def memes(self, interaction: discord.Interaction,
                     memetype: typing.Optional[typing.Literal['random', 'wholesome', 'dank']] = None):
-        embed = discord.Embed(color=discord.Colour.dark_purple())
+        embed = discord.Embed(color=discord.Colour.blue())
         if memetype is None or memetype.lower() == 'random':
             await interaction.response.send_message('Here is your random meme!',
                                                     embed=embed.set_image(url=get_meme()))
