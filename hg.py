@@ -1,8 +1,14 @@
 import os
 import asyncio
 import discord
+import random
+import pymongo
 from discord import app_commands
 from discord.ext import commands
+from numpy import random as npr
+
+# Database
+mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
 
 
 # Hunger Games Module (Currently Placeholder)
@@ -12,86 +18,284 @@ class Hg(commands.Cog):
 
     group = app_commands.Group(name='hg', description='All the subcommands for HG.')
 
-    # Adds a "player" to participant_list.txt, each in a new line
+    # TO-DO: INCLUDE ALL PLAYERS part of the command
+    # Adds a "participant" to the database
     @group.command(name='include', description='Add a player to the list of participants.')
+    @commands.guild_only()
     async def add_user(self, interaction: discord.Interaction, player: discord.Member):
-        with open('participant_list.txt', 'r') as main:
-            for line in main:
-                if f'{player.id}' not in line.strip('\n'):
-                    continue
-                else:
-                    already_included = await interaction.response.send_message('Player has already been included!')
-                    return already_included
-        add_player = {
-            "discordid": f"{player.id}",
-            "name": f"{player.display_name}",
-            "mention": f"{player.mention}",
-            "guild": f"{interaction.guild_id}",
-            "avatar": f"{player.display_avatar}",
-            "dead": False
-        }
-        with open('participant_list.txt', 'a+') as ts:
-            ts.write(f'{add_player}\n')
-            ts.close()
-        await interaction.response.send_message(f'Added {player.display_name} to participants!')
+        # Generally important variables
+        not_included = []
+        # Database
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        participant_collection = guild_database["participant_list"]
+        # Code
+        query = {"_id": player.id}
+        check = participant_collection.find(query)
+        for not_inc in check:
+            not_included.append(not_inc)
+        if not not_included:
+            add_player = {"_id": int(player.id),
+                          "name": f"{player.display_name}",
+                          "mention": f"{player.mention}",
+                          "avatar": f"{player.display_avatar}"
+                          }
+            participant_collection.insert_one(add_player)
+            await interaction.response.send_message(f'Added {player.display_name} to participants!')
+        else:
+            already_included = await interaction.response.send_message('Player has already been included!')
+            return already_included
 
-    # Removes a "player" from participant_list.txt, aka removes the line of where the id of the player is located in the file
-    @group.command(name='exclude', description='Remove a player from the list of participants.')
+    # Adds all current guild members to the database
+    @group.command(name='include_all', description='Add ALL players on the guild to the list of participants.')
+    @commands.guild_only()
+    async def add_all_users(self, interaction: discord.Interaction):
+        # Generally important variables
+        added_number = 0
+        # Database
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        participant_collection = guild_database["participant_list"]
+        # Code
+        participant_collection.delete_many({})
+        for member in interaction.guild.members:
+            add_player = {"_id": int(member.id),
+                          "name": f"{member.display_name}",
+                          "mention": f"{member.mention}",
+                          "avatar": f"{member.display_avatar}"
+                          }
+            participant_collection.insert_one(add_player)
+            added_number += 1
+        await interaction.response.send_message(f'{added_number} players added to the participant list.')
+
+    # Removes a "participant" from the storage database
+    @group.command(name='exclude', description='Exclude a player from the list of participants.')
+    @commands.guild_only()
     async def remove_user(self, interaction: discord.Interaction, player: discord.Member):
-        with open('participant_list.txt', 'r') as main:
-            with open('temp.txt', 'w') as output:
-                exists = False
-                for line in main:
-                    if f'{player.id}' not in line.strip('\n'):
-                        output.write(line)
-                    else:
-                        exists = True
-                        await interaction.response.send_message(f'Removed {player.display_name} from participants!')
-                if exists is False:
-                    await interaction.response.send_message(f'That player is not in the participants list!')
-        os.replace('temp.txt', 'participant_list.txt')
+        # Generally important variables
+        included = []
+        # Database
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        participant_collection = guild_database["participant_list"]
+        # Code
+        query = {"_id": player.id}
+        check = participant_collection.find(query)
+        for inc in check:
+            included.append(inc)
+        if included:
+            participant_collection.delete_one(query)
+            await interaction.response.send_message(f'{player.display_name} excluded.')
+        elif not included:
+            await interaction.response.send_message('Player is not in the participant list!')
+        elif player is None:
+            await interaction.response.send_message('Please specify a player!')
 
-    # Clears the participant_list.txt file COMPLETELY (will probably limit to me being the only one able to in the future)
-    @group.command(name='clear', description='Remove all players from the list of participants.')
-    async def clear_players(self, interaction: discord.Interaction):
-        with open('participant_list.txt', 'w') as ts:
-            ts.truncate()
-            ts.close()
-        await interaction.response.send_message('Participants list cleared.')
+    # Removes ALL "participants" from the storage database
+    @group.command(name='exclude_all', description='Exclude ALL players from the list of participants.')
+    @commands.guild_only()
+    async def remove_all_users(self, interaction: discord.Interaction):
+        # Database
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        participant_collection = guild_database["participant_list"]
+        # Code
+        clear_list = participant_collection.delete_many({})
+        await interaction.response.send_message(f'{clear_list.deleted_count} participants excluded.')
 
-    game_running = False
+    # Custom messages!!!!!!!! (Only placeholder commands, they do nothing(obviously))
+    @group.command(name='add_message')
+    @commands.guild_only()
+    async def add_message(self, interaction: discord.Interaction):
+        pass
 
-    # Starts the game with whatever players were included in the participant_list.txt file
+    @group.command(name='remove_message')
+    @commands.guild_only()
+    async def remove_message(self, interaction: discord.Interaction):
+        pass
+
+    # TO-DO: ADD MORE DOCUMENTATION/COMMENTS, it will be hard to read otherwise soon enough
+    # MORE TO-DO: CUSTOM MESSAGES FROM DATABASE and improve the code in general, also improve discord message formatting
+    # EVEN MORE TO-DO: (not any time soon) Scoreboard and custom NPCs (for the loners out there).
+    # Starts the game with whatever players were included in the database
     # NOT THE FINAL VERSION, this is more to see if I could, and in the future I will make a better, more feature rich one
     @group.command(name='start', description='Start hunger games, PLEASE SET IT UP FIRST!')
+    @commands.guild_only()
     async def hunger_games(self, interaction: discord.Interaction):
+        # Default Messages
+        default_alive = [
+            {"message": "**Managed to live!**"}, {"message": "**Lived through a nuclear holocaust!**"},
+            {"message": "**Had a nice day!**"}, {"message": "**Ran into a bunny, then ran for their life!**"},
+            {"message": "**Thought it was a good idea to try and eat the bot. They succeeded!**"}
+            ]
+        default_dead = [
+            {"message": "*Tripped and snapped their neck.*"}, {"message": "*Insulted the owner of the discord.*"},
+            {"message": "*Died due to pun overdose.*"}, {"message": "*Got hit by a train, and then was finished off by a moose!*"},
+            {"message": "*Death by Snu Snu.*"}, {"message": "*Thought it was a good idea to try and eat the bot. They failed.*"},
+            {"message": "*Couldn't take it anymore.*"}, {"message": "*Had a lack of faith in J.C.*"},
+            {"message": "*Found some food, then found some food poisoning.*"}, {"message": "*I've fallen, and I can't get up!*"}
+            ]
+        default_barely_survived = [
+            {"message": "***Tripped, but fell on a pillow and survived!***"}
+            ]
+        # Default Messages + Database Messages will be stored here (DATABASE/CUSTOM MESSAGES NOT YET SET UP)
+        dead_msg = []
+        alive_msg = []
+        barely_survived_msg = []
+        # Generally important variables
         day = 1
         alive = []
-        # THE INITIAL PLAYER LIST
-        with open('participant_list.txt', 'r') as player_list:
-            for initiate in player_list:
-                participant_list_add = eval(initiate)
-                guild = interaction.guild_id
-                if participant_list_add["guild"] == str(guild):
-                    alive.append(participant_list_add)
+        dead = []
+        temp_day_dead = []
+        # Database accessing variables
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        participant_collection = guild_database["participant_list"]
+        configs_collection = guild_database["configs"]
+        # Adding all messages to one usable variable (Needs improvements):
+        for message in default_dead:
+            dead_msg.append(message["message"])
+        for message in default_alive:
+            alive_msg.append(message["message"])
+        for message in default_barely_survived:
+            barely_survived_msg.append(message["message"])
+        # CHECK IF THERE IS AT LEAST 2 PLAYERS
+        player_count = participant_collection.count_documents({}, limit=2)
+        if player_count > 1:
+            # Check if a game is already running
+            currently_running = configs_collection.find({"_id": 1})
+            # Check if there is already a game running
+            for running in currently_running:
+                currently_running = running
+            if not currently_running["running"]:
+                # The initial player list
+                player_list = participant_collection.find()
+                for player in player_list:
+                    alive.append(player)
+                embed = discord.Embed(colour=discord.Colour.blue(), title='Participants')
+                await interaction.response.send_message('Game starting with the following players!')
+                for player in alive:
+                    with open('temp.txt', 'a', encoding='utf8') as starting_with:
+                        starting_with.write(f'{player["name"]}\n')
+                with open('temp.txt', 'r', encoding='utf8') as starting_with:
+                    await interaction.channel.send(
+                        embed=embed.add_field(name=f'1-{len(alive)}', value=starting_with.read()))
+                os.remove('temp.txt')
+                # THE ACTUAL GAME
+                while len(alive) > 1:
+                    # Set hunger games to RUNNING
+                    running_current = {"running": False}
+                    running_new = {"$set": {"running": True}}
+                    configs_collection.update_one(running_current, running_new)
+                    random.shuffle(alive)
+                    await asyncio.sleep(4)
+                    await interaction.followup.send(f'Day {day} is upon us!')
+                    temp_day_alive = len(alive)
+                    # This determines the outcome for each player that is ALIVE
+                    for participant in alive:
+                        # Shuffles the messages
+                        random.shuffle(dead_msg)
+                        random.shuffle(alive_msg)
+                        random.shuffle(barely_survived_msg)
+                        await asyncio.sleep(3)
+                        outcome = npr.rand()
+                        # Living outcome
+                        if outcome > 0.505:
+                            embed = discord.Embed(colour=discord.Colour.green(),
+                                                  description=f'{alive_msg[0]}')
+                            await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
+                                                                                  icon_url=f'{participant["avatar"]}'))
+                        # Dying outcome
+                        elif outcome < 0.495:
+                            if temp_day_alive > 1:
+                                embed = discord.Embed(colour=discord.Colour.red(),
+                                                      description=f'{dead_msg[0]}')
+                                await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
+                                                                                      icon_url=f'{participant["avatar"]}'))
+                                temp_day_dead.append(participant)
+                                dead.append(participant)
+                                temp_day_alive -= 1
+                            else:
+                                embed = discord.Embed(colour=discord.Colour.yellow(),
+                                                      description=f'***Barely scraped by!***')
+                                await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
+                                                                                      icon_url=f'{participant["avatar"]}'))
+                        # A very lucky player!
+                        else:
+                            embed = discord.Embed(colour=discord.Colour.yellow(),
+                                                  description=f'{barely_survived_msg[0]}')
+                            await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
+                                                                                  icon_url=f'{participant["avatar"]}'))
+                    for dead_player in temp_day_dead:
+                        alive.remove(dead_player)
+                    else:
+                        temp_day_dead.clear()
+                    if len(alive) > 1:
+                        await asyncio.sleep(4)
+                        embed = discord.Embed(colour=discord.Colour.blue(), title=f'Day {day} Summary')
+                        for player in alive:
+                            with open('temp_alive.txt', 'a', encoding='utf8') as day_alive:
+                                day_alive.write(f'{player["name"]}\n')
+                                day_alive.close()
+                        for player in dead:
+                            with open('temp_dead.txt', 'a', encoding='utf8') as day_dead:
+                                day_dead.write(f'{player["name"]}\n')
+                                day_dead.close()
+                        with open('temp_alive.txt', 'r', encoding='utf8') as day_alive:
+                            with open('temp_dead.txt', 'r', encoding='utf8') as day_dead:
+                                await interaction.channel.send(embed=embed.
+                                                               add_field(name='Alive', value=day_alive.read()).
+                                                               add_field(name='Dead', value=day_dead.read()))
+                        os.remove('temp_alive.txt')
+                        os.remove('temp_dead.txt')
+                        day += 1
+                    # Check if the game is supposed to stop now
+                    stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+                    for currently_stopping in stopping:
+                        stopping = currently_stopping
+                    if stopping["stopping"]:
+                        break
+                stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+                for currently_stopping in stopping:
+                    stopping = currently_stopping
+                if stopping["stopping"]:
+                    running_current = {"running": True}
+                    running_new = {"$set": {"running": False}}
+                    configs_collection.update_one(running_current, running_new)
+                    stopping_current = {"running": True}
+                    stopping_new = {"$set": {"running": False}}
+                    configs_collection.update_one(stopping_current, stopping_new)
+                    await interaction.followup.send('Game stopping!')
+                    return
                 else:
-                    continue
-            embed = discord.Embed(colour=discord.Colour.green(), title='Participants')
-            await interaction.response.send_message('Game starting with the following players!')
-            for player in alive:
-                with open('temp.txt', 'a') as ple:
-                    ple.write(f'{player["name"]}\n')
-            with open('temp.txt', 'r') as plist:
-                await interaction.channel.send(embed=embed.add_field(name=f'1-{len(alive)}', value=plist.read()))
-            os.remove('temp.txt')
-            player_list.close()
-        # THE ACTUAL GAME
-        with open('participant_list.txt', 'r') as player_list:
-            for line in player_list:
-                await asyncio.sleep(3.5)
-                participant = eval(line)
-                embed1 = discord.Embed(colour=discord.Colour.blue())
-                await interaction.channel.send(embed=embed1.set_author(name=f'{participant["name"]}', icon_url=f'{participant["avatar"]}'))
+                    running_current = {"running": True}
+                    running_new = {"$set": {"running": False}}
+                    configs_collection.update_one(running_current, running_new)
+                    for winner in alive:
+                        await interaction.channel.send(f'{winner["name"]} is the winner of this bout!')
+            elif currently_running["running"]:
+                await interaction.response.send_message('A game is currently running!')
+        else:
+            await interaction.response.send_message('Please include at least 2 players!')
+
+    @group.command(name='stop', description='Stop the current game at the end of the current day.')
+    @commands.guild_only()
+    @commands.has_role('Potato Master MASTER')
+    async def hunger_games_stop(self, interaction: discord.Interaction):
+        # Database
+        guild_database = mongo_client[f"storage_{interaction.guild_id}"]
+        configs_collection = guild_database["configs"]
+        # Code
+        stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+        running = configs_collection.find({"_id": 1})
+        for currently_stopping in stopping:
+            stopping = currently_stopping
+        for currently_running in running:
+            running = currently_running
+        if not stopping["stopping"] and running["running"]:
+            stopping_current = {"running": False}
+            stopping_new = {"$set": {"running": True}}
+            configs_collection.update_one(stopping_current, stopping_new)
+            await interaction.response.send_message('Game ending at the end of the current day!')
+        elif not stopping["stopping"] and not running["running"]:
+            await interaction.response.send_message('No game is currently running!')
+        elif stopping["stopping"]:
+            await interaction.response.send_message('Game already stopping!')
 
 
 # Add the cog to the bot
