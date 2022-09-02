@@ -16,16 +16,17 @@ class Fun(commands.Cog):
                           description='Get a meme, options are: wholesome and dank. For random leave empty',
                           )
     @app_commands.describe(memetype='Kind of Meme')
+    @app_commands.rename(memetype='meme_type')
     async def memes(self, interaction: discord.Interaction,
                     memetype: typing.Optional[typing.Literal['random', 'wholesome', 'dank']] = None):
         embed = discord.Embed(color=discord.Colour.blue())
-        if memetype is None or memetype.lower() == 'random':
+        if memetype is None or memetype == 'random':
             await interaction.response.send_message('Here is your random meme!',
                                                     embed=embed.set_image(url=get_meme()))
-        elif memetype.lower() == 'wholesome':
+        elif memetype == 'wholesome':
             await interaction.response.send_message('Here is your wholesome meme!',
                                                     embed=embed.set_image(url=get_wholesomememe()))
-        elif memetype.lower() == 'dank':
+        elif memetype == 'dank':
             await interaction.response.send_message('Here is your dank meme!',
                                                     embed=embed.set_image(url=get_dankmeme()))
 
@@ -36,9 +37,7 @@ class Fun(commands.Cog):
         if who:
             await interaction.response.send_message('IS NOT SMART ==> {}'.format(who.mention))
             await asyncio.sleep(1)
-            await interaction.edit_original_response(content='IS NOT SMART ==> {} \n'
-                                                             'Would you like to \'Fight back\' or \'Give up\'?'
-                                                     .format(who.mention))
+            await interaction.channel.send('Would you like to \'Fight back\' or \'Give up\'?')
 
             def check(message):
                 return message.author == who and message.channel == interaction.channel and \
