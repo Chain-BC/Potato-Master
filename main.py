@@ -4,6 +4,7 @@ import discord
 import random
 import typing
 import logging
+import pymongo
 from discord.ext import commands
 
 
@@ -29,6 +30,23 @@ async def on_ready():
     for module in modules:  # Loads all modules one by one until it cannot (big shocker)
         await bot.load_extension(module)
         print(f'{module.capitalize()} has loaded.')
+
+
+@bot.event
+async def on_guild_join(guild):
+    # Database
+    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+
+    # Guild Data
+    guild_database = mongo_client[f"storage_{guild.id}"]
+    configs_collection = guild_database["configs"]
+    initial_hg_config = [
+        {"_id": 0, "guild": guild.name},
+        {"_id": 1, "running": False},
+        {"_id": 2, "stopping": False},
+        {"_id": 3, "force_stopping": False}
+    ]
+    configs_collection.insert_many(initial_hg_config)
 
 
 # COMMAND RELATING TO MODULES HERE
