@@ -122,18 +122,22 @@ class Hg(commands.Cog):
         default_alive = [
             {"message": "**Managed to live!**"}, {"message": "**Lived through a nuclear holocaust!**"},
             {"message": "**Had a nice day!**"}, {"message": "**Ran into a bunny, then ran for their life!**"},
-            {"message": "**Thought it was a good idea to try and eat the bot. They succeeded!**"}
-            ]
+            {"message": "**Thought it was a good idea to try and eat the bot. They succeeded!**"},
+            {"message": "**Tried to run away from the cops, and then got high.**"}
+        ]
         default_dead = [
             {"message": "*Tripped and snapped their neck.*"}, {"message": "*Insulted the owner of the discord.*"},
-            {"message": "*Died due to pun overdose.*"}, {"message": "*Got hit by a train, and then was finished off by a moose!*"},
-            {"message": "*Death by Snu Snu.*"}, {"message": "*Thought it was a good idea to try and eat the bot. They failed.*"},
-            {"message": "*Couldn't take it anymore.*"}, {"message": "*Had a lack of faith in J.C.*"},
-            {"message": "*Found some food, then found some food poisoning.*"}, {"message": "*I've fallen, and I can't get up!*"}
-            ]
+            {"message": "*Died due to pun overdose.*"}, {"message": "*Death by Snu Snu.*"},
+            {"message": "*Got hit by a train, and then was finished off by a moose!*"},
+            {"message": "*Had a lack of faith in J.C.*"},
+            {"message": "*Thought it was a good idea to try and eat the bot. They failed.*"},
+            {"message": "*Couldn't take it anymore.*"},
+            {"message": "*Found some food, then found some food poisoning.*"},
+            {"message": "*I've fallen, and I can't get up!*"}
+        ]
         default_barely_survived = [
             {"message": "***Tripped, but fell on a pillow and survived!***"}
-            ]
+        ]
         # Default Messages + Database Messages will be stored here (DATABASE/CUSTOM MESSAGES NOT YET SET UP)
         dead_msg = []
         alive_msg = []
@@ -167,7 +171,7 @@ class Hg(commands.Cog):
                 player_list = participant_collection.find()
                 for player in player_list:
                     alive.append(player)
-                embed = discord.Embed(colour=discord.Colour.blue(), title='Participants')
+                embed = discord.Embed(colour=discord.Colour.from_rgb(0, 130, 220), title='Participants')
                 await interaction.response.send_message('Game starting with the following players!')
                 for player in alive:
                     with open('temp.txt', 'a', encoding='utf8') as starting_with:
@@ -183,8 +187,9 @@ class Hg(commands.Cog):
                     running_new = {"$set": {"running": True}}
                     configs_collection.update_one(running_current, running_new)
                     random.shuffle(alive)
-                    await asyncio.sleep(4)
+                    await asyncio.sleep(2)
                     await interaction.followup.send(f'Day {day} is upon us!')
+                    await asyncio.sleep(4)
                     temp_day_alive = len(alive)
                     # This determines the outcome for each player that is ALIVE
                     for participant in alive:
@@ -192,7 +197,6 @@ class Hg(commands.Cog):
                         random.shuffle(dead_msg)
                         random.shuffle(alive_msg)
                         random.shuffle(barely_survived_msg)
-                        await asyncio.sleep(3)
                         outcome = npr.rand()
                         # Living outcome
                         if outcome > 0.505:
@@ -203,7 +207,7 @@ class Hg(commands.Cog):
                         # Dying outcome
                         elif outcome < 0.495:
                             if temp_day_alive > 1:
-                                embed = discord.Embed(colour=discord.Colour.red(),
+                                embed = discord.Embed(colour=discord.Colour.from_rgb(135, 0, 0),
                                                       description=f'{dead_msg[0]}')
                                 await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
                                                                                       icon_url=f'{participant["avatar"]}'))
@@ -221,13 +225,14 @@ class Hg(commands.Cog):
                                                   description=f'{barely_survived_msg[0]}')
                             await interaction.channel.send(embed=embed.set_author(name=f'{participant["name"]}',
                                                                                   icon_url=f'{participant["avatar"]}'))
+                        await asyncio.sleep(3)
                     for dead_player in temp_day_dead:
                         alive.remove(dead_player)
                     else:
                         temp_day_dead.clear()
                     if len(alive) > 1:
                         await asyncio.sleep(4)
-                        embed = discord.Embed(colour=discord.Colour.blue(), title=f'Day {day} Summary')
+                        embed = discord.Embed(colour=discord.Colour.from_rgb(0, 130, 220), title=f'Day {day} Summary')
                         for player in alive:
                             with open('temp_alive.txt', 'a', encoding='utf8') as day_alive:
                                 day_alive.write(f'{player["name"]}\n')
@@ -245,20 +250,20 @@ class Hg(commands.Cog):
                         os.remove('temp_dead.txt')
                         day += 1
                     # Check if the game is supposed to stop now
-                    stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+                    stopping = configs_collection.find({"_id": 2})
                     for currently_stopping in stopping:
                         stopping = currently_stopping
                     if stopping["stopping"]:
                         break
-                stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+                stopping = configs_collection.find({"_id": 2})
                 for currently_stopping in stopping:
                     stopping = currently_stopping
                 if stopping["stopping"]:
                     running_current = {"running": True}
                     running_new = {"$set": {"running": False}}
                     configs_collection.update_one(running_current, running_new)
-                    stopping_current = {"running": True}
-                    stopping_new = {"$set": {"running": False}}
+                    stopping_current = {"stopping": True}
+                    stopping_new = {"$set": {"stopping": False}}
                     configs_collection.update_one(stopping_current, stopping_new)
                     await interaction.followup.send('Game stopping!')
                     return
@@ -281,15 +286,15 @@ class Hg(commands.Cog):
         guild_database = mongo_client[f"storage_{interaction.guild_id}"]
         configs_collection = guild_database["configs"]
         # Code
-        stopping = configs_collection.find({"_id": 2}, {"stopping": 1})
+        stopping = configs_collection.find({"_id": 2})
         running = configs_collection.find({"_id": 1})
         for currently_stopping in stopping:
             stopping = currently_stopping
         for currently_running in running:
             running = currently_running
         if not stopping["stopping"] and running["running"]:
-            stopping_current = {"running": False}
-            stopping_new = {"$set": {"running": True}}
+            stopping_current = {"stopping": False}
+            stopping_new = {"$set": {"stopping": True}}
             configs_collection.update_one(stopping_current, stopping_new)
             await interaction.response.send_message('Game ending at the end of the current day!')
         elif not stopping["stopping"] and not running["running"]:
