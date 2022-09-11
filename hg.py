@@ -22,7 +22,7 @@ class Hg(commands.Cog):
     @group.command(name='config', description='Tweak various options on the bot or repair it.')
     @app_commands.describe(option='Pick a value to change in the configurations or repair them.')
     @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def config(self, interaction: discord.Interaction, option: typing.Literal['repair', 'only_custom_messages']):
         guild_database = mongo_client[f"storage_{interaction.guild_id}"]
         configs_collection = guild_database["configs"]
@@ -438,7 +438,7 @@ class Hg(commands.Cog):
 
     @group.command(name='stop', description='Stop the current game at the end of the current day.')
     @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def hunger_games_stop(self, interaction: discord.Interaction):
         # Database
         guild_database = mongo_client[f"storage_{interaction.guild_id}"]
