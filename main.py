@@ -12,7 +12,7 @@ from discord.ext import commands
 class Bot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
-        super().__init__(command_prefix="$$", intents=intents)
+        super().__init__(command_prefix=commands.when_mentioned_or('$$'), intents=intents)
 
 
 # BOT and USER
@@ -44,7 +44,8 @@ async def on_guild_join(guild):
         {"_id": 0, "guild": guild.name},
         {"_id": 1, "running": False},
         {"_id": 2, "stopping": False},
-        {"_id": 3, "force_stopping": False}
+        {"_id": 3, "force_stopping": False},
+        {"_id": 4, "only_custom_messages": False}
     ]
     configs_collection.insert_many(initial_hg_config)
 
@@ -70,7 +71,7 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
         await ctx.send(f"{value.capitalize()} unloaded.", ephemeral=True)
 
 
-@bot.hybrid_command(name='sync', description='Sync globally or to current server.')
+@bot.hybrid_command(name='sync', description='Sync globally or to the current server.')
 @commands.guild_only()
 @commands.has_role('Potato Master MASTER')
 async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'current']):
@@ -78,8 +79,7 @@ async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'cu
         synced = await bot.tree.sync()
         await ctx.send(f"Synced {len(synced)} commands globally.")
     elif opt == 'current':
-        guild = ctx.guild
-        synced = await bot.tree.sync(guild=guild)
+        synced = await bot.tree.sync(guild=discord.Object(id=ctx.guild.id))
         await ctx.send(f"Synced {len(synced)} commands to the current guild.")
 
 
