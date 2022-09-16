@@ -77,10 +77,10 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
 async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'current']):
     if opt == 'global':
         synced = await bot.tree.sync()
-        await ctx.send(f"Synced {len(synced)} commands globally.")
+        await ctx.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
     elif opt == 'current':
         synced = await bot.tree.sync(guild=discord.Object(id=ctx.guild.id))
-        await ctx.send(f"Synced {len(synced)} commands to the current guild.")
+        await ctx.send(f"Synced {len(synced)} commands to the current guild.", ephemeral=True)
 
 
 # For various interactions with the bot.
