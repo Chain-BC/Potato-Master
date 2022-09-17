@@ -31,9 +31,9 @@ async def on_ready():
         try:
             await bot.load_extension(module)
         except commands.ExtensionFailed:
-            print(f'{module.upper()} failed to load!')
+            print(f'{module.capitalize()} failed to load!')
         else:
-            print(f'{module.upper()} has loaded.')
+            print(f'{module.capitalize()} has loaded.')
 
 
 @bot.event
@@ -57,70 +57,77 @@ async def on_guild_join(guild):
 # COMMAND RELATING TO MODULES HERE
 @bot.hybrid_command(name='module', description='Reload, unload or load modules.')
 @commands.guild_only()
-@commands.has_role('Potato Master MASTER')
 async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "unload", "load"], value: str = None):
-    if opt == 'load':
-        try:
-            await bot.load_extension(value)
-        except commands.ExtensionFailed:
-            await ctx.send(f"{value.capitalize()} failed to load!", ephemeral=True)
-        except commands.ExtensionNotFound:
-            await ctx.send("No such extension.", ephemeral=True)
-        except commands.ExtensionAlreadyLoaded:
-            await ctx.send(f"{value.capitalize()} was already loaded.", ephemeral=True)
-        except commands.NoEntryPointError:
-            await ctx.send("Module not set up correctly.", ephemeral=True)
-        else:
-            modules.append(value)
-            await ctx.send(f"{value.capitalize()} loaded.", ephemeral=True)
-    elif opt == 'unload':
-        try:
-            await bot.unload_extension(value)
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f"{value.capitalize()} was not loaded.", ephemeral=True)
-        except commands.ExtensionNotFound:
-            await ctx.send("No such extension.", ephemeral=True)
-        else:
-            modules.remove(value)
-            await ctx.send(f"{value.capitalize()} unloaded.", ephemeral=True)
-    else:
-        if value is None or value == '':
-            for module in modules:
-                try:
-                    await bot.reload_extension(module)
-                except commands.ExtensionFailed:
-                    await ctx.send(f"{module.capitalize()} failed to reload!", ephemeral=True)
-                except commands.ExtensionNotFound:
-                    await ctx.send(f"{module.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
-                except commands.NoEntryPointError:
-                    await ctx.send("Module not set up correctly.", ephemeral=True)
-                else:
-                    await ctx.send(f"{module.capitalize()} reloaded.", ephemeral=True)
-        else:
+    discord_id = os.environ['DISCORD_ID']  # IF SELF HOSTING, SET discord_id TO YOUR DISCORD ID
+    if ctx.author.id == int(discord_id):
+        if opt == 'load':
             try:
-                await bot.reload_extension(value)
+                await bot.load_extension(value)
             except commands.ExtensionFailed:
-                await ctx.send(f"{value.capitalize()} failed to reload!", ephemeral=True)
-            except commands.ExtensionNotLoaded:
-                await ctx.send(f"{value.capitalize()} was not loaded!", ephemeral=True)
+                await ctx.send(f"{value.capitalize()} failed to load!", ephemeral=True)
             except commands.ExtensionNotFound:
-                await ctx.send(f"{value.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
+                await ctx.send("No such extension.", ephemeral=True)
+            except commands.ExtensionAlreadyLoaded:
+                await ctx.send(f"{value.capitalize()} was already loaded.", ephemeral=True)
             except commands.NoEntryPointError:
                 await ctx.send("Module not set up correctly.", ephemeral=True)
             else:
-                await ctx.send(f"{value.capitalize()} reloaded.", ephemeral=True)
+                modules.append(value)
+                await ctx.send(f"{value.capitalize()} loaded.", ephemeral=True)
+        elif opt == 'unload':
+            try:
+                await bot.unload_extension(value)
+            except commands.ExtensionNotFound:
+                await ctx.send("No such extension.", ephemeral=True)
+            except commands.ExtensionNotLoaded:
+                await ctx.send(f"{value.capitalize()} was not loaded or does not exist.", ephemeral=True)
+            else:
+                modules.remove(value)
+                await ctx.send(f"{value.capitalize()} unloaded.", ephemeral=True)
+        else:
+            if value is None or value == '':
+                for module in modules:
+                    try:
+                        await bot.reload_extension(module)
+                    except commands.ExtensionFailed:
+                        await ctx.send(f"{module.capitalize()} failed to reload!", ephemeral=True)
+                    except commands.ExtensionNotFound:
+                        await ctx.send(f"{module.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
+                    except commands.NoEntryPointError:
+                        await ctx.send("Module not set up correctly.", ephemeral=True)
+                    else:
+                        await ctx.send(f"{module.capitalize()} reloaded.", ephemeral=True)
+            else:
+                try:
+                    await bot.reload_extension(value)
+                except commands.ExtensionFailed:
+                    await ctx.send(f"{value.capitalize()} failed to reload!", ephemeral=True)
+                except commands.ExtensionNotLoaded:
+                    await ctx.send(f"{value.capitalize()} was not loaded!", ephemeral=True)
+                except commands.ExtensionNotFound:
+                    await ctx.send(f"{value.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
+                except commands.NoEntryPointError:
+                    await ctx.send("Module not set up correctly.", ephemeral=True)
+                else:
+                    await ctx.send(f"{value.capitalize()} reloaded.", ephemeral=True)
+    else:
+        await ctx.send('You are not allowed to do this!', ephemeral=True)
 
 
 @bot.hybrid_command(name='sync', description='Sync globally or to the current server.')
 @commands.guild_only()
 @commands.has_role('Potato Master MASTER')
 async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'current']):
-    if opt == 'global':
-        synced = await bot.tree.sync()
-        await ctx.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
+    discord_id = os.environ['DISCORD_ID']  # IF SELF HOSTING, SET discord_id TO YOUR DISCORD ID
+    if ctx.author.id == discord_id:
+        if opt == 'global':
+            synced = await bot.tree.sync()
+            await ctx.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
+        else:
+            synced = await bot.tree.sync(guild=discord.Object(id=ctx.guild.id))
+            await ctx.send(f"Synced {len(synced)} commands to the current guild.", ephemeral=True)
     else:
-        synced = await bot.tree.sync(guild=discord.Object(id=ctx.guild.id))
-        await ctx.send(f"Synced {len(synced)} commands to the current guild.", ephemeral=True)
+        await ctx.send('You are not allowed to do this!', ephemeral=True)
 
 
 # For various interactions with the bot.
