@@ -1,0 +1,6 @@
+# Stuff that is pretty much for everyone else
+/Lib
+/Scripts
+pyvenv.cfg
+testing.py
+discord.log
