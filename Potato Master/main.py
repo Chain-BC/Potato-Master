@@ -19,8 +19,8 @@ class Bot(commands.Bot):
 bot = Bot()
 user = bot.user
 
-# Modules: fun, hg, dev
-modules = ['fun', 'hg']  # These will be all ENABLED by default
+# Current Modules: fun, hg, dev
+modules = ['fun', 'hg', 'dev']  # These will be all ENABLED by default
 
 
 # When bot is ready to go
@@ -32,6 +32,7 @@ async def on_ready():
             await bot.load_extension(module)
         except commands.ExtensionFailed:
             print(f'{module.capitalize()} failed to load!')
+            raise commands.ExtensionFailed
         else:
             print(f'{module.capitalize()} has loaded.')
 
@@ -65,12 +66,16 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
                 await bot.load_extension(value)
             except commands.ExtensionFailed:
                 await ctx.send(f"{value.capitalize()} failed to load!", ephemeral=True)
+                raise commands.ExtensionFailed
             except commands.ExtensionNotFound:
                 await ctx.send("No such extension.", ephemeral=True)
+                raise commands.ExtensionNotFound
             except commands.ExtensionAlreadyLoaded:
                 await ctx.send(f"{value.capitalize()} was already loaded.", ephemeral=True)
+                raise commands.ExtensionAlreadyLoaded
             except commands.NoEntryPointError:
                 await ctx.send("Module not set up correctly.", ephemeral=True)
+                raise commands.NoEntryPointError
             else:
                 modules.append(value)
                 await ctx.send(f"{value.capitalize()} loaded.", ephemeral=True)
@@ -79,8 +84,10 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
                 await bot.unload_extension(value)
             except commands.ExtensionNotFound:
                 await ctx.send("No such extension.", ephemeral=True)
+                raise commands.ExtensionNotFound
             except commands.ExtensionNotLoaded:
                 await ctx.send(f"{value.capitalize()} was not loaded or does not exist.", ephemeral=True)
+                raise commands.ExtensionNotLoaded
             else:
                 modules.remove(value)
                 await ctx.send(f"{value.capitalize()} unloaded.", ephemeral=True)
@@ -91,10 +98,14 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
                         await bot.reload_extension(module)
                     except commands.ExtensionFailed:
                         await ctx.send(f"{module.capitalize()} failed to reload!", ephemeral=True)
+                        raise commands.ExtensionFailed
                     except commands.ExtensionNotFound:
-                        await ctx.send(f"{module.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
+                        await ctx.send(f"{module.capitalize()} not found! Did you delete it by accident?",
+                                       ephemeral=True)
+                        raise commands.ExtensionNotFound
                     except commands.NoEntryPointError:
                         await ctx.send("Module not set up correctly.", ephemeral=True)
+                        raise commands.NoEntryPointError
                     else:
                         await ctx.send(f"{module.capitalize()} reloaded.", ephemeral=True)
             else:
@@ -102,12 +113,16 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
                     await bot.reload_extension(value)
                 except commands.ExtensionFailed:
                     await ctx.send(f"{value.capitalize()} failed to reload!", ephemeral=True)
+                    raise commands.ExtensionFailed
                 except commands.ExtensionNotLoaded:
                     await ctx.send(f"{value.capitalize()} was not loaded!", ephemeral=True)
+                    raise commands.ExtensionNotLoaded
                 except commands.ExtensionNotFound:
                     await ctx.send(f"{value.capitalize()} not found! Did you delete it by accident?", ephemeral=True)
+                    raise commands.ExtensionNotFound
                 except commands.NoEntryPointError:
                     await ctx.send("Module not set up correctly.", ephemeral=True)
+                    raise commands.NoEntryPointError
                 else:
                     await ctx.send(f"{value.capitalize()} reloaded.", ephemeral=True)
     else:
@@ -116,10 +131,9 @@ async def modify_modules(ctx: commands.Context, opt: typing.Literal["reload", "u
 
 @bot.hybrid_command(name='sync', description='Sync globally or to the current server.')
 @commands.guild_only()
-@commands.has_role('Potato Master MASTER')
 async def sync_commands(ctx: commands.Context, opt: typing.Literal['global', 'current']):
     discord_id = os.environ['DISCORD_ID']  # IF SELF HOSTING, SET discord_id TO YOUR DISCORD ID
-    if ctx.author.id == discord_id:
+    if ctx.author.id == int(discord_id):
         if opt == 'global':
             synced = await bot.tree.sync()
             await ctx.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
