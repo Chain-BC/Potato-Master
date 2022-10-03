@@ -1,6 +1,4 @@
 # Stuff that is pretty much for everyone else
-/Lib
-/Scripts
-pyvenv.cfg
+/Python 3.10
 testing.py
 discord.log
