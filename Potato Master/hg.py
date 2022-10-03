@@ -1,35 +1,11 @@
 import asyncio
 import typing
-import pymongo
 import discord
 from discord import app_commands
 from discord.ext import commands
-import numpy as np
 from numpy import random as npr
-
-
-# Everything mongo *Wink*
-class MongoDB:
-    def __init__(self, discord_id):
-        self.discord_id = discord_id
-        self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
-        self.guild_database = self.mongo_client[f"storage_{self.discord_id}"]
-
-    def msg_alive(self):
-        messages_alive_collection = self.guild_database["messages_alive"]
-        return messages_alive_collection
-
-    def msg_dead(self):
-        messages_dead_collection = self.guild_database["messages_dead"]
-        return messages_dead_collection
-
-    def configs(self):
-        configs_collection = self.guild_database["configs"]
-        return configs_collection
-
-    def participants(self):
-        participant_collection = self.guild_database["participant_list"]
-        return participant_collection
+from Mongo.MongoHG import MongoHG
+from HGMessages.default import default_alive, default_dead, default_barely_survived
 
 
 # Hunger Games Module
@@ -56,7 +32,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             A list of all the messages, but only one type can be shown at the time.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Generally important variables
         embed = discord.Embed(colour=discord.Colour.from_rgb(0, 130, 220), title='Message List')
@@ -65,8 +41,8 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
 
         # Code
         if message_type == 'alive':
-            if mongo.msg_alive().count_documents({}) > 0:
-                for msg in mongo.msg_alive().find().sort("_id", 1):
+            if mongo.msg(msg_type='alive').count_documents({}) > 0:
+                for msg in mongo.msg(msg_type='alive').find().sort("_id", 1):
                     the_message.append(msg)
                 for final_message in the_message:
                     temp_str += f'[{final_message["_id"]}] {final_message["message"]}\n'
@@ -92,8 +68,8 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             else:
                 await interaction.response.send_message('The list is empty!')
         elif message_type == 'dead':
-            if mongo.msg_dead().count_documents({}) > 0:
-                for msg in mongo.msg_dead().find().sort("_id", 1):
+            if mongo.msg(msg_type='dead').count_documents({}) > 0:
+                for msg in mongo.msg(msg_type='dead').find().sort("_id", 1):
                     the_message.append(msg)
                 for final_message in the_message:
                     temp_str += f'[{final_message["_id"]}] {final_message["message"]}\n'
@@ -129,7 +105,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Add a new message to the database, could be either a message for dying playing, or living player.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
         # Generally important variables
         message_id = 0
         find_message_id = []
@@ -137,15 +113,14 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
         # Code
         if not len(message) > 96:
             if message_type == 'alive':
-                if mongo.msg_alive().count_documents({}) <= 100:
+                if mongo.msg(msg_type='alive').count_documents({}) <= 100:
                     while message_id <= 1000:
-                        look_for = mongo.msg_alive().find({"_id": message_id})
+                        look_for = mongo.msg(msg_type='alive').find({"_id": message_id})
                         for found_or_not in look_for:
                             find_message_id.append(found_or_not)
                         if len(find_message_id) < 1:
-                            mongo.msg_alive().insert_one({"_id": message_id, "message": f"{message}"})
-                            await interaction.response.send_message(
-                                f'Added custom message to alive list with ID {message_id}.')
+                            mongo.msg(msg_type='alive').insert_one({"_id": message_id, "message": f"{message}"})
+                            await interaction.response.send_message(f'Added custom message to alive list with ID {message_id}.')
                             return
                         else:
                             message_id += 1
@@ -153,13 +128,13 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
                 else:
                     await interaction.response.send_message('Message limit for alive reached!')
             elif message_type == 'dead':
-                if mongo.msg_dead().count_documents({}) <= 96:
+                if mongo.msg(msg_type='dead').count_documents({}) <= 96:
                     while message_id <= 1000:
-                        look_for = mongo.msg_dead().find({"_id": message_id})
+                        look_for = mongo.msg(msg_type='dead').find({"_id": message_id})
                         for found in look_for:
                             find_message_id.append(found)
                         if len(find_message_id) < 1:
-                            mongo.msg_dead().insert_one({"_id": message_id, "message": f"{message}"})
+                            mongo.msg(msg_type='dead').insert_one({"_id": message_id, "message": f"{message}"})
                             await interaction.response.send_message(
                                 f'Added custom message to dead list with ID {message_id}.')
                             return
@@ -181,28 +156,28 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Remove a message from the database, ID MUST BE USED! You cannot use the message itself to remove it.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
         # Generally important variables
         deleted_message = []
 
         # Code
         if message_type == 'alive':
-            if mongo.msg_alive().find_one({"_id": message_id}):
-                for message in mongo.msg_alive().find({"_id": message_id}):
+            if mongo.msg(msg_type='alive').find_one({"_id": message_id}):
+                for message in mongo.msg(msg_type='alive').find({"_id": message_id}):
                     deleted_message.append(message)
-                mongo.msg_alive().delete_one({"_id": message_id})
+                mongo.msg(msg_type='alive').delete_one({"_id": message_id})
                 for message in deleted_message:
                     await interaction.response.send_message(f'Message "{message["message"]}" has been deleted!')
-            elif not mongo.msg_alive().find_one({"_id": message_id}):
+            elif not mongo.msg(msg_type='alive').find_one({"_id": message_id}):
                 await interaction.response.send_message('Message does not exist!')
         elif message_type == 'dead':
-            if mongo.msg_dead().find_one({"_id": message_id}):
-                for message in mongo.msg_dead().find({"_id": message_id}):
+            if mongo.msg(msg_type='dead').find_one({"_id": message_id}):
+                for message in mongo.msg(msg_type='dead').find({"_id": message_id}):
                     deleted_message.append(message)
-                mongo.msg_dead().delete_one({"_id": message_id})
+                mongo.msg(msg_type='dead').delete_one({"_id": message_id})
                 for message in deleted_message:
                     await interaction.response.send_message(f'Message "{message["message"]}" has been deleted!')
-            elif not mongo.msg_dead().find_one({"_id": message_id}):
+            elif not mongo.msg(msg_type='dead').find_one({"_id": message_id}):
                 await interaction.response.send_message('Message does not exist!')
 
     """
@@ -222,7 +197,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Sets all major configurations to the default values. Should not affect any player made configs.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Code
         if not mongo.configs().find_one({"_id": 0}):
@@ -246,7 +221,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             in the main command.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Code
         for true_or_false in [mongo.configs().find_one({"_id": 4})]:
@@ -279,7 +254,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Adds a single user to the database containing all the participants that can currently take part in the game.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Generally important variables
         not_included = []
@@ -306,7 +281,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Adds ALL users in the guild to the list of participants that can currently take part in the game.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Generally important variables
         added_number = 0
@@ -330,7 +305,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Removes a single user from the database containing all the participants.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Generally important variables
         included = []
@@ -351,7 +326,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
             Removes ALL users from the database containing all the participants.
         """
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Code
         clear_list = mongo.participants().delete_many({})
@@ -375,26 +350,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
     @commands.guild_only()
     async def hunger_games(self, interaction: discord.Interaction):
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
-        # Default Messages
-        default_alive = np.array([
-            "**Managed to live!**", "**Lived through a nuclear holocaust!**",
-            "**Had a nice day!**", "**Ran into a bunny, then ran for their life!**",
-            "**Thought it was a good idea to try and eat the bot. They succeeded!**",
-            "**Tried to run away from the cops, and then got high.**"
-        ])
-        default_dead = np.array([
-            "*Tripped and snapped their neck.*", "*Insulted the owner of the discord.*",
-            "*Died due to pun overdose.*", "*Death by Snu Snu.*",
-            "*Got hit by a train, and then was finished off by a moose!*",
-            "*Had a lack of faith in J.C.*", "*Thought it was a good idea to try and eat the bot. They failed.*",
-            "*Couldn't take it anymore.*", "*Found some food, then found some food poisoning.*",
-            "*I've fallen, and I can't get up!*"
-        ])
-        default_barely_survived = np.array([
-            "***Tripped, but fell on a pillow and survived!***",
-            "***Survived a heart attack!***"
-        ])
+        mongo = MongoHG(discord_id=interaction.guild_id)
 
         # Generally important variables
         day = 1
@@ -402,17 +358,17 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
         temp_day_dead = []
 
         # Adding all messages to one usable variable
-        dead_msg = [db_message["message"] for db_message in list(mongo.msg_dead().find())]
-        alive_msg = [db_message["message"] for db_message in list(mongo.msg_alive().find())]
+        dead_msg = [db_message["message"] for db_message in list(mongo.msg(msg_type='dead').find())]
+        alive_msg = [db_message["message"] for db_message in list(mongo.msg(msg_type='alive').find())]
 
-        # Finds out where the use default messages or not
+        # Finds out where the use default messages or not (stored in HGMessages/default.py as variables)
         for only_custom in [mongo.configs().find_one({"_id": 4})]:
             if not only_custom["only_custom_messages"]:
                 dead_msg = [message for message in default_dead]
                 alive_msg = [message for message in default_alive]
             elif only_custom["only_custom_messages"]:
-                check_dead = list(mongo.msg_dead().find())
-                check_alive = list(mongo.msg_alive().find())
+                check_dead = list(mongo.msg(msg_type='dead').find())
+                check_alive = list(mongo.msg(msg_type='alive').find())
                 if len(check_dead) >= 1 <= len(check_alive):
                     break
                 elif len(check_dead) < 1 <= len(check_alive):
@@ -529,7 +485,7 @@ class HG(commands.GroupCog, name='hg', description='The main subcommand of hunge
     @app_commands.default_permissions(administrator=True)
     async def hunger_games_stop(self, interaction: discord.Interaction):
         # MONGO
-        mongo = MongoDB(discord_id=interaction.guild_id)
+        mongo = MongoHG(discord_id=interaction.guild_id)
         # Code
         stopping = [mongo.configs().find_one({"_id": 2})]
         running = [mongo.configs().find_one({"_id": 1})]
