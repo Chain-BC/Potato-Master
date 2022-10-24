@@ -9,7 +9,7 @@ class MongoHG:
         self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
         self.guild_database = self.mongo_client[f"storage_{self.discord_id}"]
 
-    def msg(self, msg_type: typing.Literal['alive', 'dead']):
+    def msg(self, msg_type: typing.Literal['alive', 'dead', 'wounded']):
         messages_collection = self.guild_database[f"messages_{msg_type}"]
         return messages_collection
 
