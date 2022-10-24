@@ -46,13 +46,20 @@ async def on_guild_join(guild):
     guild_database = mongo_client[f"storage_{guild.id}"]
     configs_collection = guild_database["configs"]
     initial_hg_config = [
-        {"_id": 0, "guild": guild.name},
-        {"_id": 1, "running": False},
-        {"_id": 2, "stopping": False},
-        {"_id": 3, "force_stopping": False},
-        {"_id": 4, "only_custom_messages": False}
-    ]
-    configs_collection.insert_many(initial_hg_config)
+            {"guild": guild.name},
+            {"running": False},
+            {"stopping": False},
+            {"user_changeable": {
+                "day_msg": 'Day {day} incoming!',
+                "recover_msg": 'Has recovered from their wounds!',
+                "revive_msg": 'Has revived!',
+                "only_custom_messages": False
+            }}
+        ]
+    for dictionary in initial_hg_config:
+        filter_dict = tuple(dictionary.items())
+        filter_dict = {f"{filter_dict[0][0]}": {"$exists": True}}
+        configs_collection.update_one(filter_dict, {"$set": dictionary}, upsert=True)
 
 
 # COMMAND RELATING TO MODULES HERE
