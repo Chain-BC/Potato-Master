@@ -19,8 +19,8 @@ class Bot(commands.Bot):
 bot = Bot()
 user = bot.user
 
-# Current Modules: fun, hg, dev
-modules = ['fun', 'hg', 'dev']  # These will be all ENABLED by default
+# Current Modules: fun, hg,
+modules = ['fun', 'hg']  # These will be all ENABLED by default
 
 
 # When bot is ready to go
